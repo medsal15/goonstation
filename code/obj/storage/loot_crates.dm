@@ -601,8 +601,8 @@
 		attempts_allowed = 18
 
 	attempt_to_open(var/mob/living/opener)
-		boutput(opener, "<span class='notice'>The crate is locked with a hexadecimal padlock.</span>")
-		var/entered = input(usr, "Enter hexadecimal code from 0 to 9 and A to F", "Hexa-Code Lock")
+		boutput(opener, "<span class='notice'>The crate is locked with a hexadecimal lock. You can see [code_length] lights.</span>")
+		var/entered = input(usr, "Enter hexadecimal code from 0 to 9 and A to F.", "Hexa-Code Lock")
 		if (length(entered) != code_length || !is_hex(entered))
 			boutput(opener, "You leave the crate alone")
 			return -1
