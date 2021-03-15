@@ -318,18 +318,18 @@
 		var/newtrap = null
 		switch(tier)
 			if(2)
-				newlock = pick(/datum/loot_crate_lock/decacode,/datum/loot_crate_lock/hangman/seven)
+				newlock = pick(/datum/loot_crate_lock/decacode,/datum/loot_crate_lock/hangman/seven,/datum/loot_crate_lock/mastermind/six)
 				newtrap = pick(/datum/loot_crate_trap/crusher,/datum/loot_crate_trap/spikes,/datum/loot_crate_trap/zap)
 				name = "fortified " + name
 				desc += " It's pretty heavily secured, too."
 			if(3)
-				newlock = pick(/datum/loot_crate_lock/hangman/nine)
+				newlock = pick(/datum/loot_crate_lock/hangman/nine,/datum/loot_crate_lock/mastermind/eight)
 				newtrap = pick(/datum/loot_crate_trap/bomb,/datum/loot_crate_trap/zap)
 				name = "heavily reinforced " + name
 				desc += " It's also got more security measures on it than Fort Knox."
 			else
 				trap_prob = 33
-				newlock = pick(/datum/loot_crate_lock/decacode,/datum/loot_crate_lock/hangman)
+				newlock = pick(/datum/loot_crate_lock/decacode,/datum/loot_crate_lock/hangman,/datum/loot_crate_lock/mastermind)
 				newtrap = pick(/datum/loot_crate_trap/crusher,/datum/loot_crate_trap/spikes)
 
 		if (ispath(newlock))
@@ -576,6 +576,110 @@
 		code = pick(strings("password_pool.txt", code_pool))
 		attempts_remaining = attempts_allowed
 		revealed_code = initial(revealed_code)
+/datum/loot_crate_lock/mastermind
+	/*
+		Mastermind game in which the solution is "code" and the guess is "lastattempt".
+
+		There are 4 base digits, and 2 more per difficulty level.
+
+		There are 10 base attempts, and 4 more per difficulty level.
+		The increase is from the increase of digits.
+	*/
+	attempts_allowed = 10
+	var/code = null
+	var/code_length = 4
+	var/lastattempt = null
+	var/wrongplace = 0
+	var/rightplace = 0
+
+	six
+		code_length = 6
+		attempts_allowed = 14
+
+	eight
+		code_length = 8
+		attempts_allowed = 18
+
+	attempt_to_open(var/mob/living/opener)
+		boutput(opener, "<span class='notice'>The crate is locked with a hexadecimal padlock.</span>")
+		var/entered = input(usr, "Enter hexadecimal code from 0 to 9 and A to F", "Hexa-Code Lock")
+		if (length(entered) != code_length || !is_hex(entered))
+			boutput(opener, "You leave the crate alone")
+			return -1
+
+		if (!inputter_check(opener))
+			return
+
+		entered = uppertext(entered)
+		src.lastattempt = entered
+
+		// Shameless copy from secure_safe.dm, with a few modifications
+		var/guessplace = 0
+		var/codeplace = 0
+		var/guessflags = 0
+		var/codeflags = 0
+
+		wrongplace = 0
+		rightplace = 0
+		while (++guessplace < code_length + 1)
+			if ((((guessflags - guessflags % (2 ** (guessplace - 1))) / (2 ** (guessplace - 1))) % 2 == 0) && (copytext(lastattempt, guessplace , guessplace + 1) == copytext(code, guessplace, guessplace + 1)))
+				guessflags += 2 ** (guessplace - 1)
+				codeflags += 2 ** (guessplace - 1)
+				rightplace++
+
+		guessplace = 0
+		while (++guessplace < code_length + 1)
+			codeplace = 0
+			while (++codeplace < code_length + 1)
+				if(guessplace != codeplace && (((guessflags - guessflags % (2 ** (guessplace - 1))) / (2 ** (guessplace - 1))) % 2 == 0) && (((codeflags - codeflags % (2 ** (codeplace - 1))) / (2 ** (codeplace - 1))) % 2 == 0) && (copytext(lastattempt, guessplace , guessplace + 1) == copytext(code, codeplace , codeplace + 1)))
+					guessflags += 2 ** (guessplace - 1)
+					codeflags += 2 ** (codeplace - 1)
+					wrongplace++
+					codeplace = code_length + 1
+
+		if (entered == code)
+			return 1
+		else
+			return 0
+	read_device(var/mob/living/reader)
+		boutput(reader, "<b>HEXA-CODE LOCK REPORT:</b>[code]")
+		if (attempts_remaining == 1)
+			boutput(reader, "<span class='alert'>* Anti-tamper system will activate on next failed access attempt.</span>")
+		else
+			boutput(reader, "* Anti-tamper system will activate after [attempts_remaining] failed access attempts.")
+
+		if (lastattempt == null)
+			boutput(reader, "* None of the [code_length] lights are lit.")
+			return
+
+		var/desctext = ""
+		switch (rightplace)
+			if (0)
+				desctext += "" //How do i make it do nothing
+			if (1)
+				desctext += "1 green light"
+			else
+				desctext += "[rightplace] green lights"
+
+		if (desctext && (wrongplace) > 0)
+			desctext += " and "
+
+		switch (wrongplace)
+			if (0)
+				desctext += "" //How do i make it do nothing
+			if (1)
+				desctext += "1 red light"
+			else
+				desctext += "[wrongplace] red lights"
+
+		if (desctext)
+			boutput(reader, "* The panel shows [desctext] out of [code_length] lights.")
+		if (!desctext && lastattempt != null)
+			boutput(reader, "* None of the [code_length] lights are lit.")
+	scramble_code()
+		code = random_hex(code_length)
+		attempts_remaining = attempts_allowed
+		lastattempt = null
 
 // TRAPS
 
